@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <title>Webcam ingest</title>
+  </head>
+
+  <body>
+    <button id="connect">Connect</button>
+    <video autoplay muted />
+    <script>
+      document.getElementById("connect").addEventListener("click", () => {
+        const whipEndpoint = document.getElementById("url").value;
+        (async () => {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true,
+          });
+          const pc = new RTCPeerConnection();
+
+          pc.onconnectionstatechange = (event) => {
+            switch (pc.connectionState) {
+              case "connected":
+                break;
+              case "disconnected":
+              case "failed":
+                break;
+              case "closed":
+                break;
+            }
+          };
+
+          for (const track of stream.getTracks()) pc.addTrack(track);
+
+          const offer = await pc.createOffer();
+
+          await pc.setLocalDescription(offer);
+
+          const fetched = await fetch(whipEndpoint, {
+            method: "POST",
+            body: offer.sdp,
+            headers: {
+              "Content-Type": "application/sdp",
+            },
+          });
+
+          const answer = await fetched.text();
+
+          await pc.setRemoteDescription({
+            type: "answer",
+            sdp: answer,
+          });
+        })();
+      });
+    </script>
+  </body>
+</html>
